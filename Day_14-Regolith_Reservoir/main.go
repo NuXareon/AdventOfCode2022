@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type terrainType int
@@ -154,69 +155,62 @@ func generateGrid(input [][][]int64, minPos []int64, maxPos []int64) [][]terrain
 	return grid
 }
 
+func timeTrack(start time.Time) {
+    elapsed := time.Since(start)
+    fmt.Println("Process Time: ", elapsed)
+}
+
 func processGrid(grid [][]terrainType, minPos []int64) ([][]terrainType, int) {
+	defer timeTrack(time.Now())
+	
 	sandGrains := 0
 	startPos := []int64{500, 0}
 	startPos[0] -= minPos[0]
 	startPos[1] -= minPos[1]
+
+	trail := make([][]int64, 0)
+	trail = append(trail, []int64{startPos[0], startPos[1]})
 
 	for {
 		if grid[startPos[1]][startPos[0]] == Sand {
 			return grid, sandGrains
 		}
 
-		pos := make([]int64, len(startPos))
-		copy(pos, startPos)
+		trail = simulateSand(trail, grid)
 
-		pos = simulateSand(pos, grid)
-		
-		if pos[1] < 0 || pos[1] >= int64(len(grid)) || pos[0] < 0 || pos[0] >= int64(len(grid[pos[1]])) {
-			// Fell to the void
-			break
-		}
-
+		pos := trail[len(trail)-1]
 		grid[pos[1]][pos[0]] = Sand
+		trail = trail[:len(trail)-1]
+
 		sandGrains++
 	}
-
-	return grid, sandGrains
 }
 
-func simulateSand(pos []int64, grid [][]terrainType) []int64 {
+func simulateSand(trail [][]int64, grid [][]terrainType) ([][]int64) {
+	pos := make([]int64, 2)
+	copy(pos, trail[len(trail)-1])
 	for {
 		// check down
 		pos[1] += 1
-		if pos[1] >= int64(len(grid)) {
-			// Fell to the void
-			return pos
-		}
 		if grid[pos[1]][pos[0]] == Air {
+			trail = append(trail, []int64{pos[0], pos[1]})
 			continue
 		}
 
 		// check left (and down)
 		pos[0] -= 1
-		if pos[0] < 0 {
-			// Fell to the void
-			return pos
-		}
 		if grid[pos[1]][pos[0]] == Air {
+			trail = append(trail, []int64{pos[0], pos[1]})
 			continue
 		}
 
 		// check right (and down)
 		pos[0] += 2
-		if pos[0] >= int64(len(grid[pos[1]])) {
-			// Fell to the void
-			return pos
-		}
 		if grid[pos[1]][pos[0]] == Air {
+			trail = append(trail, []int64{pos[0], pos[1]})
 			continue
 		}
 
-		// return to previous position
-		pos[0] -= 1
-		pos[1] -= 1
-		return pos
+		return trail
 	}
 }
